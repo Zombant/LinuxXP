@@ -39,9 +39,6 @@ void Frame::Create(Display *display, Window root, Window win_to_frame, XWindowAt
     max_win = XCreateSimpleWindow(display, frame_win, attrs.x+attrs.width-2*BUTTON_SIZE-4*BUTTON_BORDER_WIDTH-DISTANCE_BETWEEN_BUTTONS, attrs.y, BUTTON_SIZE, BUTTON_SIZE, BUTTON_BORDER_WIDTH, BUTTON_BORDER_COLOR, BUTTON_BG_COLOR_B);
     min_win = XCreateSimpleWindow(display, frame_win, attrs.x+attrs.width-3*BUTTON_SIZE-6*BUTTON_BORDER_WIDTH-2*DISTANCE_BETWEEN_BUTTONS, attrs.y, BUTTON_SIZE, BUTTON_SIZE, BUTTON_BORDER_WIDTH, BUTTON_BORDER_COLOR, BUTTON_BG_COLOR_B);
 
-    // Select inputs on the frame
-    XSelectInput(display, frame_win, SubstructureRedirectMask | SubstructureNotifyMask);
-
     // Add client to save set so it will be kept alive if WM crashes
     XAddToSaveSet(display, win_to_frame);
 
