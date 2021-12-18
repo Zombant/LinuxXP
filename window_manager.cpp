@@ -1,5 +1,6 @@
 #include "window_manager.hpp"
 #include "frame.hpp"
+#include <X11/Xlib.h>
 extern "C" {
 #include <X11/Xutil.h>
 }
@@ -200,13 +201,13 @@ void WindowManager::FrameWindow(Window w, bool was_created_before_wm) {
 
     // 8. Grab events for window management actions on client window
     //  a. Move windows with Alt + Left button
-    XGrabButton(display_, Button1, Mod1Mask, w, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+    //XGrabButton(display_, Button1, Mod1Mask, w, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
     //  b. Resize windows with Alt + Right button
-    XGrabButton(display_, Button3, Mod1Mask, w, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+    //XGrabButton(display_, Button3, Mod1Mask, w, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
     //  c. Kill windows with Alt + F4
-    XGrabKey(display_, XKeysymToKeycode(display_, XK_F4), Mod1Mask, w, false, GrabModeAsync, GrabModeAsync); 
+    //XGrabKey(display_, XKeysymToKeycode(display_, XK_F4), Mod1Mask, w, false, GrabModeAsync, GrabModeAsync); 
     //  d. Switch windows with Alt + TAB
-    XGrabKey(display_, XKeysymToKeycode(display_, XK_Tab), Mod1Mask, w, false, GrabModeAsync, GrabModeAsync); 
+    //XGrabKey(display_, XKeysymToKeycode(display_, XK_Tab), Mod1Mask, w, false, GrabModeAsync, GrabModeAsync); 
 
     printf("Framed window\n");
 }
@@ -217,11 +218,13 @@ void WindowManager::OnMotionNotify(const XMotionEvent& e) {
     const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
 
     if(e.state & Button1Mask) {
-        // Alt + Left button: moves a window
+        printf("test\n");
+        printf("Button Moved: X: %d, Y: %d\n", e.x_root, e.y_root);
         const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
-        //XMoveWindow(display_, frame.frame_win, dest_frame_pos.x, dest_frame_pos.y);
-        frame.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
-    } else if(e.state * Button3Mask) {
+        XMoveWindow(display_, e.window, dest_frame_pos.x, dest_frame_pos.y);
+        //frame.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
+        printf("Destination: X: %d, Y: %d\n", dest_frame_pos.x, dest_frame_pos.y);
+    } else if(e.state & Button3Mask) {
         // Alt + Right button: resize window
         const Vector2D<int> size_delta(max(delta.x, -drag_start_frame_size.width), max(delta.y, -drag_start_frame_size.height));
         const Size<int> dest_frame_size(drag_start_frame_size.width+ size_delta.x, + drag_start_frame_size.height + size_delta.y);
@@ -254,27 +257,24 @@ void WindowManager::UnFrame(Window w) {
 }
 
 void WindowManager::OnButtonPress(const XButtonEvent& e){
-    
     Frame frame = clients_[e.window];
-
     frame.dragged = true;
 
     // 1. Save intial cursor position
     drag_start_pos = Position<int>(e.x_root, e.y_root);
-
+    printf("Button Pressed: X: %d, Y: %d\n", e.x_root, e.y_root);
     // 2. Save initial window info
     Window returned_root;
     int x, y;
     unsigned width, height, border_width, depth;
-    XGetGeometry(display_, frame.frame_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+    XGetGeometry(display_, e.window, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+    printf("GetGeometry: X: %d, Y: %d\n", e.x_root, e.y_root);
     drag_start_frame_pos = Position<int>(x, y);
     drag_start_frame_size = Size<int>(width, height);
 
 
     // 3. Raise clicked window to the top
-    XRaiseWindow(display_, frame.frame_win);
-
-
+    XRaiseWindow(display_, e.window);
     
 }
 
