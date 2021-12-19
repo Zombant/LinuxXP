@@ -41,7 +41,14 @@ void WindowManager::Setup() {
     //  a. Selects events on root window. Error handler to exist gracefully if another WM is running
     wm_detected_ = false;
     XSetErrorHandler(&WindowManager::OnWMDetected);
-    XSelectInput(display_, root_, SubstructureRedirectMask | SubstructureNotifyMask);
+
+    // Select events on the root
+    XSelectInput(display_, root_, SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask);
+
+    // Syncronously grab the the left button on the root
+    XGrabButton(display_, Button1, AnyModifier, root_, false, Button1Mask, GrabModeSync, GrabModeAsync, None, None);
+
+
     XSync(display_, false);
     if(wm_detected_){
         fprintf(stderr, "Another window manager is running\n");
@@ -96,6 +103,7 @@ void WindowManager::Run() {
                 break;
             case UnmapNotify:
                 OnUnmapNotify(e.xunmap);
+                printf("UnmapNotify\n");
                 break;
             case ButtonPress:
                 OnButtonPress(e.xbutton);
@@ -115,6 +123,9 @@ void WindowManager::Run() {
                 break;
         }
 
+        // Pass through Pointer clicks to the client
+        XAllowEvents(display_, ReplayPointer, e.xbutton.time);
+        XSync(display_, 0);
 
     }
 }
@@ -152,7 +163,6 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
 
     // Grant request by calling XConfigureWindow
     XConfigureWindow(display_, e.window, e.value_mask, &changes);
-    printf("Resize\n");
 }
 
 // Make the window visible on the screen
@@ -160,6 +170,8 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
 void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
     // 1. Frame or re-frame window
     FrameWindow(e.window, false);
+
+    // Select button press on the client window
 
     // 2. Actually map the window
     XMapWindow(display_, e.window);
@@ -199,40 +211,9 @@ void WindowManager::FrameWindow(Window w, bool was_created_before_wm) {
     // 7. Save frame handle
     clients_[w] = frame;
 
-    // 8. Grab events for window management actions on client window
-    //  a. Move windows with Alt + Left button
-    //XGrabButton(display_, Button1, Mod1Mask, w, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-    //  b. Resize windows with Alt + Right button
-    //XGrabButton(display_, Button3, Mod1Mask, w, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-    //  c. Kill windows with Alt + F4
-    //XGrabKey(display_, XKeysymToKeycode(display_, XK_F4), Mod1Mask, w, false, GrabModeAsync, GrabModeAsync); 
-    //  d. Switch windows with Alt + TAB
-    //XGrabKey(display_, XKeysymToKeycode(display_, XK_Tab), Mod1Mask, w, false, GrabModeAsync, GrabModeAsync); 
-
     printf("Framed window\n");
 }
 
-void WindowManager::OnMotionNotify(const XMotionEvent& e) {
-    Frame frame = clients_[e.window];
-    const Position<int> drag_pos(e.x_root, e.y_root);
-    const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
-
-    if(e.state & Button1Mask) {
-        printf("test\n");
-        printf("Button Moved: X: %d, Y: %d\n", e.x_root, e.y_root);
-        const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
-        XMoveWindow(display_, e.window, dest_frame_pos.x, dest_frame_pos.y);
-        //frame.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
-        printf("Destination: X: %d, Y: %d\n", dest_frame_pos.x, dest_frame_pos.y);
-    } else if(e.state & Button3Mask) {
-        // Alt + Right button: resize window
-        const Vector2D<int> size_delta(max(delta.x, -drag_start_frame_size.width), max(delta.y, -drag_start_frame_size.height));
-        const Size<int> dest_frame_size(drag_start_frame_size.width+ size_delta.x, + drag_start_frame_size.height + size_delta.y);
-
-        // Resize frame
-        frame.ResizeFrame(display_, dest_frame_size.width, dest_frame_size.height);
-    }
-}
 
 void WindowManager::UnFrame(Window w) {
     // Reverse steps taken in Frame()
@@ -249,6 +230,9 @@ void WindowManager::UnFrame(Window w) {
 
     // 4. Destroy frame
     XDestroyWindow(display_, frame.frame_win);
+    XDestroyWindow(display_, frame.close_win);
+    XDestroyWindow(display_, frame.max_win);
+    XDestroyWindow(display_, frame.min_win);
 
     // 5. Drop reference to frame handle
     clients_.erase(w);
@@ -256,8 +240,42 @@ void WindowManager::UnFrame(Window w) {
     printf("Unframed window\n");
 }
 
+void WindowManager::OnMotionNotify(const XMotionEvent& e) {
+
+    // Don't handle motion on root window
+    if(e.subwindow == None){
+        return;
+    }
+
+    Frame frame = clients_[e.subwindow];
+    const Position<int> drag_pos(e.x_root, e.y_root);
+    const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
+
+    if((e.state & Button1Mask)) {
+        printf("test\n");
+        printf("Button Moved: X: %d, Y: %d\n", e.x_root, e.y_root);
+        const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
+        XMoveWindow(display_, e.subwindow, dest_frame_pos.x, dest_frame_pos.y);
+        //frame.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
+        printf("Destination: X: %d, Y: %d\n", dest_frame_pos.x, dest_frame_pos.y);
+    } else if(e.state & Button3Mask) {
+        // Alt + Right button: resize window
+        const Vector2D<int> size_delta(max(delta.x, -drag_start_frame_size.width), max(delta.y, -drag_start_frame_size.height));
+        const Size<int> dest_frame_size(drag_start_frame_size.width+ size_delta.x, + drag_start_frame_size.height + size_delta.y);
+
+        // Resize frame
+        frame.ResizeFrame(display_, dest_frame_size.width, dest_frame_size.height);
+    }
+}
 void WindowManager::OnButtonPress(const XButtonEvent& e){
-    Frame frame = clients_[e.window];
+
+
+    // Don't handle button presses on root window
+    if(e.subwindow == None) {
+        return;
+    }
+
+    Frame frame = clients_[e.subwindow];
     frame.dragged = true;
 
     // 1. Save intial cursor position
@@ -267,14 +285,14 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
     Window returned_root;
     int x, y;
     unsigned width, height, border_width, depth;
-    XGetGeometry(display_, e.window, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+    XGetGeometry(display_, e.subwindow, &returned_root, &x, &y, &width, &height, &border_width, &depth);
     printf("GetGeometry: X: %d, Y: %d\n", e.x_root, e.y_root);
     drag_start_frame_pos = Position<int>(x, y);
     drag_start_frame_size = Size<int>(width, height);
 
 
     // 3. Raise clicked window to the top
-    XRaiseWindow(display_, e.window);
+    XRaiseWindow(display_, e.subwindow);
     
 }
 

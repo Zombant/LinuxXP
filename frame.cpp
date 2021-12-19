@@ -28,11 +28,11 @@ void Frame::Create(Display *display, Window root, Window win_to_frame, XWindowAt
     XSetWindowAttributes frame_attr;
     frame_attr.border_pixel = FRAME_BORDER_COLOR;
     frame_attr.background_pixel = FRAME_BG_COLOR;
-    frame_attr.event_mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | ExposureMask;
+    frame_attr.event_mask =/* ButtonPressMask | ButtonReleaseMask | ButtonMotionMask |*/ ExposureMask;
     frame_win = XCreateWindow(display, root, attrs.x, attrs.y, attrs.width + CLIENT_OFFSET_X, attrs.height + CLIENT_OFFSET_Y, FRAME_BORDER_WIDTH,
             DefaultDepth(display, screen_num), InputOutput, DefaultVisual(display, screen_num), valuemask, &frame_attr);
 
-    XSelectInput(display, frame_win, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | ExposureMask);
+    //XSelectInput(display, frame_win, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | ExposureMask);
 
     // Close button
     close_win = XCreateSimpleWindow(display, frame_win, attrs.x+attrs.width-BUTTON_SIZE-2*BUTTON_BORDER_WIDTH, attrs.y, BUTTON_SIZE, BUTTON_SIZE, BUTTON_BORDER_WIDTH, BUTTON_BORDER_COLOR, BUTTON_BG_COLOR_R);
