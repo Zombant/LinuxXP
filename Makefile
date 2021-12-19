@@ -4,3 +4,6 @@ build:
 run:
 	make build
 	Xephyr :100 -ac -br -screen 800x600 ./window_manager.o
+
+clean:
+	rm window_manager.o

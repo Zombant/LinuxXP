@@ -1,5 +1,5 @@
 xclock &
 
-sleep 1 && xterm &
+xterm &
 
 exec ./window_manager.o

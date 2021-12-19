@@ -119,7 +119,7 @@ void WindowManager::Run() {
                 break;
             // ...
             default:
-                //printf("Ignored Event\n");
+                printf("Ignored Event\n");
                 break;
         }
 
@@ -210,6 +210,7 @@ void WindowManager::FrameWindow(Window w, bool was_created_before_wm) {
 
     // 7. Save frame handle
     clients_[w] = frame;
+    frames_[frame.frame_win] = frame;
 
     printf("Framed window\n");
 }
@@ -236,69 +237,66 @@ void WindowManager::UnFrame(Window w) {
 
     // 5. Drop reference to frame handle
     clients_.erase(w);
+    frames_.erase(frame.frame_win);
 
     printf("Unframed window\n");
 }
 
 void WindowManager::OnMotionNotify(const XMotionEvent& e) {
 
-    // Don't handle motion on root window
-    if(e.subwindow == None){
-        return;
-    }
+    // Get the window of the frame that is to be moved
+    Window frame_win_to_move = frame_being_moved.frame_win;
 
-    Frame frame = clients_[e.subwindow];
     const Position<int> drag_pos(e.x_root, e.y_root);
     const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
 
+    // Move the frame that is to be moved if the left button is pressed
     if((e.state & Button1Mask)) {
-        printf("test\n");
-        printf("Button Moved: X: %d, Y: %d\n", e.x_root, e.y_root);
+        //printf("Button Moved: X: %d, Y: %d\n", e.x_root, e.y_root);
         const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
-        XMoveWindow(display_, e.subwindow, dest_frame_pos.x, dest_frame_pos.y);
+        XMoveWindow(display_, frame_win_to_move, dest_frame_pos.x, dest_frame_pos.y);
         //frame.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
-        printf("Destination: X: %d, Y: %d\n", dest_frame_pos.x, dest_frame_pos.y);
-    } else if(e.state & Button3Mask) {
-        // Alt + Right button: resize window
-        const Vector2D<int> size_delta(max(delta.x, -drag_start_frame_size.width), max(delta.y, -drag_start_frame_size.height));
-        const Size<int> dest_frame_size(drag_start_frame_size.width+ size_delta.x, + drag_start_frame_size.height + size_delta.y);
+        //printf("Destination: X: %d, Y: %d\n", dest_frame_pos.x, dest_frame_pos.y);
+    } 
 
-        // Resize frame
-        frame.ResizeFrame(display_, dest_frame_size.width, dest_frame_size.height);
-    }
 }
 void WindowManager::OnButtonPress(const XButtonEvent& e){
-
 
     // Don't handle button presses on root window
     if(e.subwindow == None) {
         return;
     }
 
-    Frame frame = clients_[e.subwindow];
-    frame.dragged = true;
+    // Raise clicked window to the top
+    XRaiseWindow(display_, e.subwindow);
+
+    // Make sure that the clicked window is a frame
+    if(!frames_.count(e.subwindow)){
+        return;
+    }
+
+    // Get the frame and set it to the frame that is being moved
+    Frame frame = frames_[e.subwindow];
+    frame_being_moved = frame;
 
     // 1. Save intial cursor position
     drag_start_pos = Position<int>(e.x_root, e.y_root);
-    printf("Button Pressed: X: %d, Y: %d\n", e.x_root, e.y_root);
+    //printf("Button Pressed: X: %d, Y: %d\n", e.x_root, e.y_root);
     // 2. Save initial window info
     Window returned_root;
     int x, y;
     unsigned width, height, border_width, depth;
-    XGetGeometry(display_, e.subwindow, &returned_root, &x, &y, &width, &height, &border_width, &depth);
-    printf("GetGeometry: X: %d, Y: %d\n", e.x_root, e.y_root);
+    XGetGeometry(display_, frame.frame_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+    //printf("GetGeometry: X: %d, Y: %d\n", e.x_root, e.y_root);
     drag_start_frame_pos = Position<int>(x, y);
     drag_start_frame_size = Size<int>(width, height);
 
 
-    // 3. Raise clicked window to the top
-    XRaiseWindow(display_, e.subwindow);
     
 }
 
 void WindowManager::OnButtonRelease(const XButtonEvent& e){
-    Frame frame = clients_[e.window];
-    frame.dragged = false;
+   frame_being_moved = {}; 
 }
 
 // Functions that do nothing

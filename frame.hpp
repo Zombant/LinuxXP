@@ -9,7 +9,7 @@ extern "C" {
 #include "util.hpp"
 
 #define FRAME_BORDER_WIDTH 3
-#define FRAME_BORDER_COLOR 0x0000ff
+#define FRAME_BORDER_COLOR 0x0000aa
 #define FRAME_BG_COLOR 0x0000ff
 
 #define BUTTON_BORDER_WIDTH 1
@@ -44,9 +44,6 @@ class Frame {
 
         // Button windows
         Window min_win, max_win, close_win;
-
-        // Whether the window is being dragged
-        bool dragged;
 
     private:
 

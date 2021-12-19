@@ -40,6 +40,9 @@ class WindowManager {
         // Maps top-level windows to their Frames
         ::std::unordered_map<Window, Frame> clients_;
 
+        // Maps frame_win's to their Frame objects
+        ::std::unordered_map<Window, Frame> frames_;
+
         // Xlib error handler. Must be static because its address is passed to Xlib
         static int OnXError(Display* display, XErrorEvent* e);
 
@@ -57,6 +60,9 @@ class WindowManager {
 
         // Size of affected window at start of window move/resize
         Size<int> drag_start_frame_size;
+
+        // Frame that is being moved
+        Frame frame_being_moved;
 
         // Event handlers
 
