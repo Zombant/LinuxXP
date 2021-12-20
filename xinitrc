@@ -1,3 +1,5 @@
+nitrogen --restore &
+
 xclock &
 
 xterm &

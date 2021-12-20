@@ -252,45 +252,78 @@ void WindowManager::OnMotionNotify(const XMotionEvent& e) {
 
     // Move the frame that is to be moved if the left button is pressed
     if((e.state & Button1Mask)) {
-        //printf("Button Moved: X: %d, Y: %d\n", e.x_root, e.y_root);
         const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
-        XMoveWindow(display_, frame_win_to_move, dest_frame_pos.x, dest_frame_pos.y);
-        //frame.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
-        //printf("Destination: X: %d, Y: %d\n", dest_frame_pos.x, dest_frame_pos.y);
+        frame_being_moved.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
     } 
 
 }
 void WindowManager::OnButtonPress(const XButtonEvent& e){
 
+    bool frame_button_pressed;
+
     // Don't handle button presses on root window
+    // TODO: Right click on root will open a menu
     if(e.subwindow == None) {
         return;
     }
-
+    
     // Raise clicked window to the top
     XRaiseWindow(display_, e.subwindow);
 
-    // Make sure that the clicked window is a frame
-    if(!frames_.count(e.subwindow)){
-        return;
-    }
-
-    // Get the frame and set it to the frame that is being moved
+    // Get the frame that was clicked
     Frame frame = frames_[e.subwindow];
-    frame_being_moved = frame;
 
-    // 1. Save intial cursor position
-    drag_start_pos = Position<int>(e.x_root, e.y_root);
-    //printf("Button Pressed: X: %d, Y: %d\n", e.x_root, e.y_root);
-    // 2. Save initial window info
+    // Handle clicks of frame buttons
+    Window returned_root_frame;
+    int x_frame, y_frame;
+    unsigned width_frame, height_frame, border_width_frame, depth_frame;
+    XGetGeometry(display_, frame.frame_win, &returned_root_frame, &x_frame, &y_frame, &width_frame, &height_frame, &border_width_frame, &depth_frame);
+
     Window returned_root;
     int x, y;
     unsigned width, height, border_width, depth;
-    XGetGeometry(display_, frame.frame_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
-    //printf("GetGeometry: X: %d, Y: %d\n", e.x_root, e.y_root);
-    drag_start_frame_pos = Position<int>(x, y);
-    drag_start_frame_size = Size<int>(width, height);
+    XGetGeometry(display_, frame.close_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+    //printf("Click position: X= %d, Y= %d\n", e.x-x_frame, e.y-y_frame);
+    //printf("Close position: X= %d, Y= %d\n", x, y);
+    //printf("Close width: Width= %d, Height=%d\n", width, height);
+    if(e.x-x_frame > x && e.x-x_frame < x+width && e.y-y_frame > y-y_frame && e.y-y_frame < y+height){
+        printf("Close win\n");
+        frame_button_pressed = true;
+    }
 
+    XGetGeometry(display_, frame.max_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+    if(e.x-x_frame > x && e.x-x_frame < x+width && e.y-y_frame > y-y_frame && e.y-y_frame < y+height){
+        printf("Max win\n");
+        frame_button_pressed = true;
+    }
+
+    XGetGeometry(display_, frame.min_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+    if(e.x-x_frame > x && e.x-x_frame < x+width && e.y-y_frame > y-y_frame && e.y-y_frame < y+height){
+        printf("Min win\n");
+        frame_button_pressed = true;
+    }
+
+
+
+    // If the window clicked is a frame, prepare to move it
+    if(frames_.count(e.subwindow) & !frame_button_pressed){
+
+        // Set the frame to the frame that is being moved
+        frame_being_moved = frame;
+
+        // 1. Save intial cursor position
+        drag_start_pos = Position<int>(e.x_root, e.y_root);
+        //printf("Button Pressed: X: %d, Y: %d\n", e.x_root, e.y_root);
+        // 2. Save initial window info
+        Window returned_root;
+        int x, y;
+        unsigned width, height, border_width, depth;
+        XGetGeometry(display_, frame.frame_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+        //printf("GetGeometry: X: %d, Y: %d\n", e.x_root, e.y_root);
+        drag_start_frame_pos = Position<int>(x, y);
+        drag_start_frame_size = Size<int>(width, height);
+
+    }
 
     
 }
