@@ -88,6 +88,13 @@ class WindowManager {
         // Unframes a top-level window
         void UnFrame(Window w);
 
+        // Closes a window(client)
+        void CloseWindow(Window win_to_close);
+
+        // Atoms
+        const Atom WM_PROTOCOLS;
+        const Atom WM_DELETE_WINDOW;
+
 };
 
 #endif

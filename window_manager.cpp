@@ -7,6 +7,8 @@ extern "C" {
 #include "util.hpp"
 #include <cstdio>
 #include <iostream>
+#include <algorithm>
+#include <cstring>
 
 using ::std::unique_ptr;
 using namespace std;
@@ -25,7 +27,9 @@ unique_ptr<WindowManager> WindowManager::Create() {
     return unique_ptr<WindowManager>(new WindowManager(display));
 }
 
-WindowManager::WindowManager(Display* display) : display_(display), root_(DefaultRootWindow(display_)) {}
+WindowManager::WindowManager(Display* display) : display_(display), root_(DefaultRootWindow(display_)),
+    WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
+    WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)) {}
 
 WindowManager::~WindowManager() {
     XCloseDisplay(display_);
@@ -288,6 +292,7 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
     //printf("Close width: Width= %d, Height=%d\n", width, height);
     if(e.x-x_frame > x && e.x-x_frame < x+width && e.y-y_frame > y-y_frame && e.y-y_frame < y+height){
         printf("Close win\n");
+        CloseWindow(frame.client_win);
         frame_button_pressed = true;
     }
 
@@ -324,8 +329,32 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
         drag_start_frame_size = Size<int>(width, height);
 
     }
-
     
+}
+
+void WindowManager::CloseWindow(Window win_to_close){
+    Atom *supported_protocols;
+    int num_supported_protocols;
+    if(XGetWMProtocols(display_, win_to_close, &supported_protocols, &num_supported_protocols) &&
+            (::std::find(supported_protocols, supported_protocols + num_supported_protocols, WM_DELETE_WINDOW) !=
+             supported_protocols + num_supported_protocols)) {
+        printf("Closing window gracefully\n");
+
+        // Construct message
+        XEvent msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.xclient.type = ClientMessage;
+        msg.xclient.message_type = WM_PROTOCOLS;
+        msg.xclient.window = win_to_close;
+        msg.xclient.format = 32;
+        msg.xclient.data.l[0] = WM_DELETE_WINDOW;
+
+        // Send message to close the window
+        XSendEvent(display_, win_to_close, false, 0, &msg);
+    } else {
+        // Force close
+        XKillClient(display_, win_to_close);
+    }
 }
 
 void WindowManager::OnButtonRelease(const XButtonEvent& e){
