@@ -263,6 +263,7 @@ void WindowManager::OnMotionNotify(const XMotionEvent& e) {
 }
 void WindowManager::OnButtonPress(const XButtonEvent& e){
 
+
     bool frame_button_pressed;
 
     // Don't handle button presses on root window
@@ -276,6 +277,9 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
 
     // Get the frame that was clicked
     Frame frame = frames_[e.subwindow];
+
+    // Keep the client window focused
+    XSetInputFocus(display_, frame.client_win, RevertToNone, CurrentTime);
 
     // Handle clicks of frame buttons
     Window returned_root_frame;
