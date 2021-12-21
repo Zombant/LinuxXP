@@ -48,6 +48,7 @@ class Frame {
     private:
 
         void UpdateButtonLocations(Display *display);
+        void UpdateClientLocation(Display *display);
 
 
 

@@ -65,6 +65,10 @@ void Frame::UpdateButtonLocations(Display *display) {
     XMoveWindow(display, min_win, attrs.width-3*BUTTON_SIZE-6*BUTTON_BORDER_WIDTH-2*DISTANCE_BETWEEN_BUTTONS, 0);
 }
 
+void Frame::UpdateClientLocation(Display *display) {
+    XMoveWindow(display, client_win, CLIENT_OFFSET_X, CLIENT_OFFSET_Y);
+}
+
 void Frame::ResizeFrame(Display *display, int width, int height) {
     XResizeWindow(display, frame_win, width, height);
     XResizeWindow(display, client_win, width-CLIENT_OFFSET_X, height-CLIENT_OFFSET_Y);
@@ -73,4 +77,5 @@ void Frame::ResizeFrame(Display *display, int width, int height) {
 
 void Frame::MoveFrame(Display *display, int x, int y) {
     XMoveWindow(display, frame_win, x, y);
+    UpdateClientLocation(display);
 }
