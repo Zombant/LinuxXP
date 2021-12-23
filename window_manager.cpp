@@ -47,10 +47,13 @@ void WindowManager::Setup() {
     XSetErrorHandler(&WindowManager::OnWMDetected);
 
     // Select events on the root
-    XSelectInput(display_, root_, SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask);
+    XSelectInput(display_, root_, SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask
+            | KeyPressMask | KeyReleaseMask);
 
     // Syncronously grab the the left button on the root
     XGrabButton(display_, Button1, AnyModifier, root_, false, Button1Mask, GrabModeSync, GrabModeAsync, None, None);
+
+    XGrabKey(display_, XKeysymToKeycode(display_, XK_r), Mod1Mask, root_, false, GrabModeAsync, GrabModeAsync);
 
 
     XSync(display_, false);
@@ -120,6 +123,10 @@ void WindowManager::Run() {
             case MotionNotify:
                 OnMotionNotify(e.xmotion);
                 printf("MotionNotify\n");
+                break;
+            case KeyPress:
+                OnKeyPress(e.xkey);
+                printf("KeyPress\n");
                 break;
             // ...
             default:
@@ -314,7 +321,7 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
 
 
 
-    // If the window clicked is a frame, prepare to move it
+    // If the window clicked is a frame, prepare to move or resize it
     if(frames_.count(e.subwindow) & !frame_button_pressed){
 
         // Set the frame to the frame that is being moved
@@ -334,6 +341,14 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
 
     }
     
+}
+
+void WindowManager::OnKeyPress(const XKeyEvent& e){
+
+    // If Alt-R is pressed, run dmenu
+    if ((e.state & Mod1Mask) && (e.keycode == XKeysymToKeycode(display_, XK_r))) {
+        system("dmenu_run -c -l 30 -bw 3 &");
+    }
 }
 
 void WindowManager::CloseWindow(Window win_to_close){
