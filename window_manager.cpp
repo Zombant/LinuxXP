@@ -48,7 +48,7 @@ void WindowManager::Setup() {
 
     // Select events on the root
     XSelectInput(display_, root_, SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask
-            | KeyPressMask | KeyReleaseMask);
+            | KeyPressMask | KeyReleaseMask | PointerMotionMask);
 
     // Syncronously grab the the left button on the root
     XGrabButton(display_, Button1, AnyModifier, root_, false, Button1Mask, GrabModeSync, GrabModeAsync, None, None);
@@ -83,6 +83,19 @@ void WindowManager::Setup() {
     //   ii. Free top-level window array
     XFree(top_level_windows);
 
+    // Create cursors
+    top_left_cursor = XCreateFontCursor(display_, XC_top_left_corner);
+    top_right_cursor = XCreateFontCursor(display_, XC_top_right_corner);
+    bottom_left_cursor = XCreateFontCursor(display_, XC_bottom_left_corner);
+    bottom_right_cursor = XCreateFontCursor(display_, XC_bottom_right_corner);
+    bottom_left_cursor = XCreateFontCursor(display_, XC_bottom_left_corner);
+    bottom_cursor = XCreateFontCursor(display_, XC_bottom_side);
+    top_cursor = XCreateFontCursor(display_, XC_top_side);
+    left_cursor = XCreateFontCursor(display_, XC_left_side);
+    right_cursor = XCreateFontCursor(display_, XC_right_side);
+    default_cursor = XCreateFontCursor(display_, XC_left_ptr);
+    XDefineCursor(display_, root_, default_cursor);
+
     //  e. Ungrab X server
     XUngrabServer(display_);
 }
@@ -99,38 +112,42 @@ void WindowManager::Run() {
         switch (e.type) {
             case ReparentNotify:
                 OnReparentNotify(e.xreparent);
+                //printf("ReparentNotify\n");
                 break;
             case MapRequest:
                 OnMapRequest(e.xmaprequest);
-                printf("MapRequest\n");
+                //printf("MapRequest\n");
                 break;
             case ConfigureRequest:
                 OnConfigureRequest(e.xconfigurerequest);
-                printf("ConfigureRequest\n");
+                //printf("ConfigureRequest\n");
                 break;
             case UnmapNotify:
                 OnUnmapNotify(e.xunmap);
-                printf("UnmapNotify\n");
+                //printf("UnmapNotify\n");
                 break;
             case ButtonPress:
                 OnButtonPress(e.xbutton);
-                printf("ButtonPress\n");
+                UpdateCursor(e);
+                //printf("ButtonPress\n");
                 break;
             case ButtonRelease:
                 OnButtonRelease(e.xbutton);
-                printf("ButtonRelease\n");
+                UpdateCursor(e);
+                //printf("ButtonRelease\n");
                 break;
             case MotionNotify:
                 OnMotionNotify(e.xmotion);
-                printf("MotionNotify\n");
+                UpdateCursor(e);
+                //printf("MotionNotify\n");
                 break;
             case KeyPress:
                 OnKeyPress(e.xkey);
-                printf("KeyPress\n");
+                //printf("KeyPress\n");
                 break;
             // ...
             default:
-                printf("Ignored Event\n");
+                //printf("Ignored Event\n");
                 break;
         }
 
@@ -249,27 +266,99 @@ void WindowManager::UnFrame(Window w) {
     // 5. Drop reference to frame handle
     clients_.erase(w);
     frames_.erase(frame.frame_win);
-
-    printf("Unframed window\n");
 }
 
 void WindowManager::OnMotionNotify(const XMotionEvent& e) {
 
-    // Get the window of the frame that is to be moved
-    Window frame_win_to_move = frame_being_moved.frame_win;
+    // Only move the window if it is not grabbed by the edges
+    if(!top && !bottom && !left && !right){
+        // Get the window of the frame that is to be moved
+        Window frame_win_to_move = frame_being_moved.frame_win;
 
-    const Position<int> drag_pos(e.x_root, e.y_root);
-    const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
+        Window frame_win_to_resize = frame_being_resized.frame_win;
 
-    // Move the frame that is to be moved if the left button is pressed
-    if((e.state & Button1Mask)) {
-        const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
-        frame_being_moved.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
-    } 
+        const Position<int> drag_pos(e.x_root, e.y_root);
+        const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
+
+        // Move/resize the frame that is to be moved/resize if the left button is pressed
+        if((e.state & Button1Mask)) {
+            const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
+            frame_being_moved.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
+        }
+    }
 
 }
+
+void WindowManager::UpdateCursor(const XEvent& ev){
+
+    const XMotionEvent e = ev.xmotion;
+
+    Frame frame = frames_[e.subwindow];
+    
+    Window returned_root_frame;
+    int x_frame, y_frame;
+    unsigned width_frame, height_frame, border_width_frame, depth_frame;
+    XGetGeometry(display_, frame.frame_win, &returned_root_frame, &x_frame, &y_frame, &width_frame, &height_frame, &border_width_frame, &depth_frame);
+
+    if(!button_pressed && e.subwindow != None) {
+        left = right = top = bottom = false;
+        if(e.x < x_frame+EDGE_GRAB_DISTANCE)
+            left = true;
+        
+        if(e.x > x_frame+width_frame-EDGE_GRAB_DISTANCE)
+            right = true;
+        
+        if(e.y < y_frame+EDGE_GRAB_DISTANCE)
+            top = true;
+        
+        if(e.y > y_frame+height_frame-EDGE_GRAB_DISTANCE)
+            bottom = true;
+
+        // Set cursor depending on corner hovered
+        if(top && left)
+            XDefineCursor(display_, root_, top_left_cursor);
+        else if(top && right)
+            XDefineCursor(display_, root_, top_right_cursor);
+        else if(bottom && left)
+            XDefineCursor(display_, root_, bottom_left_cursor);
+        else if(bottom && right)
+            XDefineCursor(display_, root_, bottom_right_cursor);
+        else if(bottom)
+            XDefineCursor(display_, root_, bottom_cursor);
+        else if(top)
+            XDefineCursor(display_, root_, top_cursor);
+        else if(left)
+            XDefineCursor(display_, root_, left_cursor);
+        else if(right)
+            XDefineCursor(display_, root_, right_cursor);
+        else
+            XDefineCursor(display_, root_, default_cursor);
+    } else if (!button_pressed && e.subwindow == None){
+        left = right = top = bottom = false;
+        XDefineCursor(display_, root_, default_cursor);
+    }
+}
+
+bool WindowManager::InsideWindow(Window win){
+
+    Window root, child;
+    int root_x, root_y, child_x, child_y;
+    unsigned int returned_mask;
+    XQueryPointer(display_, win, &root, &child, &root_x, &root_y, &child_x, &child_y, &returned_mask);
+
+    Window returned_root;
+    int x, y;
+    unsigned width, height, border_width, depth;
+    XGetGeometry(display_, win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
+
+    return child_x > 0 && child_x < width && child_y > 0 && child_y < height;
+
+
+}
+
 void WindowManager::OnButtonPress(const XButtonEvent& e){
 
+    button_pressed = true;
 
     bool frame_button_pressed;
 
@@ -288,59 +377,47 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
     // Keep the client window focused
     XSetInputFocus(display_, frame.client_win, RevertToNone, CurrentTime);
 
-    // Handle clicks of frame buttons
-    Window returned_root_frame;
-    int x_frame, y_frame;
-    unsigned width_frame, height_frame, border_width_frame, depth_frame;
-    XGetGeometry(display_, frame.frame_win, &returned_root_frame, &x_frame, &y_frame, &width_frame, &height_frame, &border_width_frame, &depth_frame);
 
-    Window returned_root;
-    int x, y;
-    unsigned width, height, border_width, depth;
-    XGetGeometry(display_, frame.close_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
-    //printf("Click position: X= %d, Y= %d\n", e.x-x_frame, e.y-y_frame);
-    //printf("Close position: X= %d, Y= %d\n", x, y);
-    //printf("Close width: Width= %d, Height=%d\n", width, height);
-    if(e.x-x_frame > x && e.x-x_frame < x+width && e.y-y_frame > y-y_frame && e.y-y_frame < y+height){
+    // Return if the click was inside the client window
+    if(InsideWindow(frame.client_win)){
+        printf("Client clicked\n");
+        return;
+    } 
+
+    if(InsideWindow(frame.close_win)){
         printf("Close win\n");
-        CloseWindow(frame.client_win);
+        frame_being_closed = frame;
         frame_button_pressed = true;
     }
 
-    XGetGeometry(display_, frame.max_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
-    if(e.x-x_frame > x && e.x-x_frame < x+width && e.y-y_frame > y-y_frame && e.y-y_frame < y+height){
+    if(InsideWindow(frame.max_win)){
         printf("Max win\n");
         frame_button_pressed = true;
     }
 
-    XGetGeometry(display_, frame.min_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
-    if(e.x-x_frame > x && e.x-x_frame < x+width && e.y-y_frame > y-y_frame && e.y-y_frame < y+height){
+    if(InsideWindow(frame.min_win)){
         printf("Min win\n");
         frame_button_pressed = true;
     }
 
-
-
     // If the window clicked is a frame, prepare to move or resize it
     if(frames_.count(e.subwindow) & !frame_button_pressed){
 
-        // Set the frame to the frame that is being moved
-        frame_being_moved = frame;
+        // Handle clicks of frame buttons
+        Window returned_root_frame;
+        int x_frame, y_frame;
+        unsigned width_frame, height_frame, border_width_frame, depth_frame;
+        XGetGeometry(display_, frame.frame_win, &returned_root_frame, &x_frame, &y_frame, &width_frame, &height_frame, &border_width_frame, &depth_frame);
 
-        // 1. Save intial cursor position
+        // Save intial cursor position
         drag_start_pos = Position<int>(e.x_root, e.y_root);
-        //printf("Button Pressed: X: %d, Y: %d\n", e.x_root, e.y_root);
-        // 2. Save initial window info
-        Window returned_root;
-        int x, y;
-        unsigned width, height, border_width, depth;
-        XGetGeometry(display_, frame.frame_win, &returned_root, &x, &y, &width, &height, &border_width, &depth);
-        //printf("GetGeometry: X: %d, Y: %d\n", e.x_root, e.y_root);
-        drag_start_frame_pos = Position<int>(x, y);
-        drag_start_frame_size = Size<int>(width, height);
 
+        drag_start_frame_pos = Position<int>(x_frame, y_frame);
+        drag_start_frame_size = Size<int>(width_frame, height_frame);
+
+        // Set the frame to the frame that is being moved or resized
+        frame_being_moved = frame;
     }
-    
 }
 
 void WindowManager::OnKeyPress(const XKeyEvent& e){
@@ -352,32 +429,42 @@ void WindowManager::OnKeyPress(const XKeyEvent& e){
 }
 
 void WindowManager::CloseWindow(Window win_to_close){
-    Atom *supported_protocols;
-    int num_supported_protocols;
-    if(XGetWMProtocols(display_, win_to_close, &supported_protocols, &num_supported_protocols) &&
-            (::std::find(supported_protocols, supported_protocols + num_supported_protocols, WM_DELETE_WINDOW) !=
-             supported_protocols + num_supported_protocols)) {
-        printf("Closing window gracefully\n");
-
-        // Construct message
-        XEvent msg;
-        memset(&msg, 0, sizeof(msg));
-        msg.xclient.type = ClientMessage;
-        msg.xclient.message_type = WM_PROTOCOLS;
-        msg.xclient.window = win_to_close;
-        msg.xclient.format = 32;
-        msg.xclient.data.l[0] = WM_DELETE_WINDOW;
-
-        // Send message to close the window
-        XSendEvent(display_, win_to_close, false, 0, &msg);
-    } else {
-        // Force close
+    // First try sending close message
+    if(!SendMessage(win_to_close, WM_DELETE_WINDOW)) {
+        // Otherwise force close
         XKillClient(display_, win_to_close);
     }
 }
 
+bool WindowManager::SendMessage(Window win, Atom protocol){
+    Atom *supported_protocols;
+    int num_supported_protocols;
+    if(XGetWMProtocols(display_, win, &supported_protocols, &num_supported_protocols) &&
+            (std::find(supported_protocols, supported_protocols + num_supported_protocols, protocol) != supported_protocols + num_supported_protocols)){
+        XEvent msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.xclient.type = ClientMessage;
+        msg.xclient.window = win;
+        msg.xclient.message_type = WM_PROTOCOLS;
+        msg.xclient.format = 32;
+        msg.xclient.data.l[0] = protocol;
+        msg.xclient.data.l[1] = CurrentTime;
+        XSendEvent(display_, win, false, 0, &msg);
+        return true;
+    }
+    return false;
+}
+
 void WindowManager::OnButtonRelease(const XButtonEvent& e){
-   frame_being_moved = {}; 
+    button_pressed = false;
+    frame_being_moved = {}; 
+
+    // Close the frame_being_closed if the pointer is still in the close button on release
+    if(InsideWindow(frame_being_closed.close_win)){
+        CloseWindow(frame_being_closed.client_win);
+        frame_being_closed = {};
+    }
+
 }
 
 // Functions that do nothing

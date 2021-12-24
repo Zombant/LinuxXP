@@ -9,6 +9,18 @@ extern "C" {
 #include "util.hpp"
 #include "frame.hpp"
 
+#define XC_top_left_corner 134
+#define XC_top_right_corner 136
+#define XC_bottom_left_corner 12
+#define XC_bottom_right_corner 14
+#define XC_bottom_side 16
+#define XC_left_side 70
+#define XC_top_side 138
+#define XC_right_side 96
+#define XC_left_ptr 68
+
+#define EDGE_GRAB_DISTANCE FRAME_BORDER_WIDTH+5
+
 class WindowManager {
     public:
         // Establish connection to X server and create WindowManager instance
@@ -64,6 +76,18 @@ class WindowManager {
         // Frame that is being moved
         Frame frame_being_moved;
 
+        // Frame that is being resized
+        Frame frame_being_resized;
+
+        // Frame that is about to be closed
+        Frame frame_being_closed;
+
+        // Button being pressed
+        bool button_pressed;
+
+        // Which corners of the frame were grabbed
+        bool top, bottom, left, right;
+
         // Event handlers
 
         // When an X client application creates a top-level window, the WM receives CreateNotify event
@@ -91,9 +115,30 @@ class WindowManager {
         // Closes a window(client)
         void CloseWindow(Window win_to_close);
 
+        // Determine if the cursor is inside a window
+        bool InsideWindow(Window win);
+
+        // Update the cursor icon
+        void UpdateCursor(const XEvent& ev);
+
+        // Sends a message to a window
+        // Returns true if it is successful
+        bool SendMessage(Window win, Atom protocol);
+
         // Atoms
         const Atom WM_PROTOCOLS;
         const Atom WM_DELETE_WINDOW;
+
+        // Cursors
+        Cursor default_cursor;
+        Cursor top_left_cursor;
+        Cursor top_right_cursor;
+        Cursor bottom_left_cursor;
+        Cursor bottom_right_cursor;
+        Cursor top_cursor;
+        Cursor bottom_cursor;
+        Cursor left_cursor;
+        Cursor right_cursor;
 
 };
 

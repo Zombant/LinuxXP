@@ -17,6 +17,7 @@ extern "C" {
 #define BUTTON_BG_COLOR_B 0x0000ff
 #define BUTTON_BG_COLOR_R 0xff0000
 #define DISTANCE_BETWEEN_BUTTONS 2
+#define BUTTON_PADDING 6
 
 #define CLIENT_OFFSET_X 0
 #define CLIENT_OFFSET_Y 32
