@@ -8,7 +8,7 @@ extern "C" {
 #include <unordered_map>
 #include "util.hpp"
 
-#define FRAME_BORDER_WIDTH 3
+#define FRAME_BORDER_WIDTH 5
 #define FRAME_BORDER_COLOR 0x0000aa
 #define FRAME_BG_COLOR 0x0000ff
 
@@ -33,7 +33,7 @@ class Frame {
 
         void MoveFrame(Display *display, int x, int y);
 
-        void ResizeFrame(Display *display, int width, int height);
+        void ResizeFrame(Display *display, int width, int height, int x_mouse, int y_mouse, int delta_x, int delta_y, bool top, bool bottom, bool left, bool right);
 
         ~Frame();
 

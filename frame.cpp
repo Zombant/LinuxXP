@@ -69,10 +69,77 @@ void Frame::UpdateClientLocation(Display *display) {
     XMoveWindow(display, client_win, CLIENT_OFFSET_X, CLIENT_OFFSET_Y+BUTTON_PADDING*2);
 }
 
-void Frame::ResizeFrame(Display *display, int width, int height) {
-    XResizeWindow(display, frame_win, width, height);
-    XResizeWindow(display, client_win, width-CLIENT_OFFSET_X, height-CLIENT_OFFSET_Y);
-    UpdateButtonLocations(display);
+void Frame::ResizeFrame(Display *display, int width, int height, int x_mouse, int y_mouse, int delta_x, int delta_y, bool top, bool bottom, bool left, bool right) {
+
+
+    Window returned_root;
+    int original_x, original_y;
+    unsigned original_width, original_height, border_width, depth;
+    XGetGeometry(display, frame_win, &returned_root, &original_x, &original_y, &original_width, &original_height, &border_width, &depth);
+
+    if(top && left) {
+
+        XResizeWindow(display, frame_win, width-2*delta_x, height-2*delta_y);
+        XResizeWindow(display, client_win, width-2*delta_x-CLIENT_OFFSET_X, height-2*delta_y-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        MoveFrame(display, x_mouse, y_mouse);//TODO: Dont just warp to mouse
+        UpdateButtonLocations(display);
+
+    } else if(top && right) {
+
+        XResizeWindow(display, frame_win, width, height-2*delta_y);
+        XResizeWindow(display, client_win, width-CLIENT_OFFSET_X, height-2*delta_y-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        MoveFrame(display, original_x, y_mouse);//TODO: Dont just warp to mouse
+        UpdateButtonLocations(display);
+
+    } else if(bottom && left){
+
+        XResizeWindow(display, frame_win, width-2*delta_x, height);
+        XResizeWindow(display, client_win, width-2*delta_x-CLIENT_OFFSET_X, height-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        MoveFrame(display, x_mouse, original_y);
+        UpdateButtonLocations(display);
+
+    } else if(bottom && right) {
+
+        //if(width < 1) { width = 1; }
+        //if(height < CLIENT_OFFSET_Y+2*BUTTON_PADDING) { height = CLIENT_OFFSET_Y + 2*BUTTON_PADDING; }
+        XResizeWindow(display, frame_win, width, height);
+        XResizeWindow(display, client_win, width-CLIENT_OFFSET_X, height-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        UpdateButtonLocations(display);
+
+    } else if(top) {
+
+        XResizeWindow(display, frame_win, original_width, height-2*delta_y);
+        XResizeWindow(display, client_win, original_width-CLIENT_OFFSET_X, height-2*delta_y-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        MoveFrame(display, original_x, y_mouse);//TODO: Dont just warp to mouse
+        UpdateButtonLocations(display);
+
+    } else if(bottom) {
+
+        //if(height < CLIENT_OFFSET_Y+2*BUTTON_PADDING) { height = CLIENT_OFFSET_Y + 2*BUTTON_PADDING; }
+
+        XResizeWindow(display, frame_win, original_width, height);
+        XResizeWindow(display, client_win, original_width-CLIENT_OFFSET_X, height-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        UpdateButtonLocations(display);
+
+    } else if(left) {
+
+        XResizeWindow(display, frame_win, width-2*delta_x, original_height);
+        XResizeWindow(display, client_win, width-2*delta_x-CLIENT_OFFSET_X, original_height-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        MoveFrame(display, x_mouse, original_y);
+        UpdateButtonLocations(display);
+
+    } else if(right) {
+
+        XResizeWindow(display, frame_win, width, original_height);
+        XResizeWindow(display, client_win, width-CLIENT_OFFSET_X, original_height-CLIENT_OFFSET_Y-2*BUTTON_PADDING);
+        UpdateButtonLocations(display);
+
+    } else {
+        //Panic!
+        return;
+    }
+
+    UpdateClientLocation(display);
 }
 
 void Frame::MoveFrame(Display *display, int x, int y) {

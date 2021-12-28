@@ -270,23 +270,24 @@ void WindowManager::UnFrame(Window w) {
 
 void WindowManager::OnMotionNotify(const XMotionEvent& e) {
 
-    // Only move the window if it is not grabbed by the edges
-    if(!top && !bottom && !left && !right){
-        // Get the window of the frame that is to be moved
-        Window frame_win_to_move = frame_being_moved.frame_win;
+    const Position<int> drag_pos(e.x_root, e.y_root);
+    const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
 
-        Window frame_win_to_resize = frame_being_resized.frame_win;
+    const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
 
-        const Position<int> drag_pos(e.x_root, e.y_root);
-        const Vector2D<int> delta(drag_pos.x - drag_start_pos.x, drag_pos.y - drag_start_pos.y);
+    //const Vector2D<int> size_delta(max(delta.x, -drag_start_frame_size.width), max(delta.y, -drag_start_frame_size.height));
+    const Size<int> dest_frame_size(drag_start_frame_size.width + delta.x, drag_start_frame_size.height + delta.y);
 
-        // Move/resize the frame that is to be moved/resize if the left button is pressed
-        if((e.state & Button1Mask)) {
-            const Position<int> dest_frame_pos(drag_start_frame_pos.x + delta.x, drag_start_frame_pos.y + delta.y);
+    // Move/resize the frame that is to be moved/resize if the left button is pressed
+    if((e.state & Button1Mask)) {
+
+        // Resize, else move
+        if(top || bottom || left || right){
+            frame_being_moved.ResizeFrame(display_, dest_frame_size.width, dest_frame_size.height, e.x_root, e.y_root, delta.x, delta.y, top, bottom, left, right);
+        } else {
             frame_being_moved.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
         }
     }
-
 }
 
 void WindowManager::UpdateCursor(const XEvent& ev){
