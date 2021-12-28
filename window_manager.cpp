@@ -1,5 +1,6 @@
 #include "window_manager.hpp"
 #include "frame.hpp"
+#include <X11/X.h>
 #include <X11/Xlib.h>
 extern "C" {
 #include <X11/Xutil.h>
@@ -240,7 +241,9 @@ void WindowManager::FrameWindow(Window w, bool was_created_before_wm) {
     clients_[w] = frame;
     frames_[frame.frame_win] = frame;
 
-    printf("Framed window\n");
+    // Focus the newly created window
+    //TODO: does not work yet
+    XSetInputFocus(display_, w, root_, CurrentTime);
 }
 
 
@@ -266,6 +269,14 @@ void WindowManager::UnFrame(Window w) {
     // 5. Drop reference to frame handle
     clients_.erase(w);
     frames_.erase(frame.frame_win);
+
+    //TODO: focus on the next client. For now, focus on the root window
+    XSetInputFocus(display_, root_, RevertToNone, CurrentTime);
+
+    // If there are no clients left, set the input focus to the root window
+    if(clients_.empty())
+        XSetInputFocus(display_, root_, RevertToNone, CurrentTime);
+    
 }
 
 void WindowManager::OnMotionNotify(const XMotionEvent& e) {
@@ -354,7 +365,6 @@ bool WindowManager::InsideWindow(Window win){
 
     return child_x > 0 && child_x < width && child_y > 0 && child_y < height;
 
-
 }
 
 void WindowManager::OnButtonPress(const XButtonEvent& e){
@@ -363,12 +373,12 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
 
     bool frame_button_pressed;
 
-    // Don't handle button presses on root window
     // TODO: Right click on root will open a menu
     if(e.subwindow == None) {
+        XSetInputFocus(display_, root_, RevertToNone, CurrentTime);
         return;
     }
-    
+
     // Raise clicked window to the top
     XRaiseWindow(display_, e.subwindow);
 
@@ -376,8 +386,8 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
     Frame frame = frames_[e.subwindow];
 
     // Keep the client window focused
-    XSetInputFocus(display_, frame.client_win, RevertToNone, CurrentTime);
-
+    // Revert to root if no subwindow is clicked, this way key combos still work
+    XSetInputFocus(display_, frame.client_win, RevertToParent, CurrentTime);
 
     // Return if the click was inside the client window
     if(InsideWindow(frame.client_win)){
