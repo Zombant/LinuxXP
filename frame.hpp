@@ -33,7 +33,7 @@ class Frame {
 
         void MoveFrame(Display *display, int x, int y);
 
-        void ResizeFrame(Display *display, int width, int height, int x_mouse, int y_mouse, int delta_x, int delta_y, bool top, bool bottom, bool left, bool right);
+        void ResizeFrame(Display *display, int width, int height);
 
         ~Frame();
 

@@ -73,11 +73,8 @@ class WindowManager {
         // Size of affected window at start of window move/resize
         Size<int> drag_start_frame_size;
 
-        // Frame that is being moved
-        Frame frame_being_moved;
-
-        // Frame that is being resized
-        Frame frame_being_resized;
+        // Frame that is being moved or resized
+        Frame frame_being_moved_resized;
 
         // Frame that is about to be closed
         Frame frame_being_closed;

@@ -17,14 +17,14 @@ using namespace std;
 bool WindowManager::wm_detected_;
 
 unique_ptr<WindowManager> WindowManager::Create() {
-    // 1. Open X Display
+    // Open X Display
     Display* display = XOpenDisplay(nullptr);
     if(display == nullptr){
         fprintf(stderr, "Failed to open X display\n");
         return nullptr;
     }
 
-    // 2. Construct WindowManager instance
+    // Construct WindowManager instance
     return unique_ptr<WindowManager>(new WindowManager(display));
 }
 
@@ -42,8 +42,8 @@ void WindowManager::Start(){
 }
 
 void WindowManager::Setup() {
-    // 1. Initialization
-    //  a. Selects events on root window. Error handler to exist gracefully if another WM is running
+    // Initialization
+    // Selects events on root window. Error handler to exist gracefully if another WM is running
     wm_detected_ = false;
     XSetErrorHandler(&WindowManager::OnWMDetected);
 
@@ -63,25 +63,26 @@ void WindowManager::Setup() {
         exit(1);
     }
 
-    //  b. Set error handler
+    // Set error handler
     XSetErrorHandler(&WindowManager::OnXError);
 
-    //  c. Grab X server to prevent windows from changes while framing them
+    // Grab X server to prevent windows from changes while framing them
     XGrabServer(display_);
 
-    //  d. Frame existing top-level windows
-    //   i. Query existing top-level windows
+    // Frame existing top-level windows
+
+    // Query existing top-level windows
     Window returned_root, returned_parent;
     Window* top_level_windows;
     unsigned int num_top_level_windows;
     XQueryTree(display_, root_, &returned_root, &returned_parent, &top_level_windows, &num_top_level_windows);
 
-    //   ii. Frame each top-level window
+    // Frame each top-level window
     for(unsigned int i = 0; i < num_top_level_windows; ++i){
         FrameWindow(top_level_windows[i], true);
     }
 
-    //   ii. Free top-level window array
+    // Free top-level window array
     XFree(top_level_windows);
 
     // Create cursors
@@ -97,19 +98,19 @@ void WindowManager::Setup() {
     default_cursor = XCreateFontCursor(display_, XC_left_ptr);
     XDefineCursor(display_, root_, default_cursor);
 
-    //  e. Ungrab X server
+    // Ungrab X server
     XUngrabServer(display_);
 }
 
 void WindowManager::Run() {
 
-    // 2. Main event loop
+    // Main event loop
     for (;;) {
-        // 1. Get next event
+        // Get next event
         XEvent e;
         XNextEvent(display_, &e);
 
-        // 2. Dispatch event
+        // Choose event
         switch (e.type) {
             case ReparentNotify:
                 OnReparentNotify(e.xreparent);
@@ -223,11 +224,11 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
 
 void WindowManager::FrameWindow(Window w, bool was_created_before_wm) {
 
-    // 1. Retrieve attributes of window to frame
+    // Retrieve attributes of window to frame
     XWindowAttributes x_window_attrs;
     XGetWindowAttributes(display_, w, &x_window_attrs);
 
-    // 2. Frame existing top-level windows that if they are visible and don't set override_redirect
+    // Frame existing top-level windows that if they are visible and don't set override_redirect
     if(was_created_before_wm) {
         if(x_window_attrs.override_redirect || x_window_attrs.map_state != IsViewable) {
             return;
@@ -237,7 +238,7 @@ void WindowManager::FrameWindow(Window w, bool was_created_before_wm) {
     Frame frame;
     frame.Create(display_, root_, w, x_window_attrs);
 
-    // 7. Save frame handle
+    // Save frame handle
     clients_[w] = frame;
     frames_[frame.frame_win] = frame;
 
@@ -251,22 +252,22 @@ void WindowManager::UnFrame(Window w) {
     // Reverse steps taken in Frame()
     const Frame frame = clients_[w];
 
-    // 1. Unmap frame
+    // Unmap frame
     XUnmapWindow(display_, frame.frame_win);
 
-    // 2. Reparent client window back to root window
+    // Reparent client window back to root window
     XReparentWindow(display_, w, root_, 0, 0);
 
-    // 3. Remove client window from save set
+    // Remove client window from save set
     XRemoveFromSaveSet(display_, w);
 
-    // 4. Destroy frame
+    // Destroy frame
     XDestroyWindow(display_, frame.frame_win);
     XDestroyWindow(display_, frame.close_win);
     XDestroyWindow(display_, frame.max_win);
     XDestroyWindow(display_, frame.min_win);
 
-    // 5. Drop reference to frame handle
+    // Drop reference to frame handle
     clients_.erase(w);
     frames_.erase(frame.frame_win);
 
@@ -291,12 +292,46 @@ void WindowManager::OnMotionNotify(const XMotionEvent& e) {
 
     // Move/resize the frame that is to be moved/resize if the left button is pressed
     if((e.state & Button1Mask)) {
-
+        //
         // Resize, else move
         if(top || bottom || left || right){
-            frame_being_moved.ResizeFrame(display_, dest_frame_size.width, dest_frame_size.height, e.x_root, e.y_root, delta.x, delta.y, top, bottom, left, right);
+            Window returned_root;
+            int original_x, original_y;
+            unsigned original_width, original_height, border_width, depth;
+            XGetGeometry(display_, frame_being_moved_resized.frame_win, &returned_root, &original_x, &original_y, 
+                    &original_width, &original_height, &border_width, &depth);
+
+            if(top && left) {
+                frame_being_moved_resized.ResizeFrame(display_, dest_frame_size.width-2*delta.x, dest_frame_size.height-2*delta.y);
+                frame_being_moved_resized.MoveFrame(display_, e.x_root, e.y_root);//TODO: Dont just warp to mouse
+            } else if(top && right) {
+                frame_being_moved_resized.ResizeFrame(display_, dest_frame_size.width, dest_frame_size.height-2*delta.y);
+                frame_being_moved_resized.MoveFrame(display_, original_x, e.y_root);//TODO: Dont just warp to mouse
+            } else if(bottom && left){
+                frame_being_moved_resized.ResizeFrame(display_, dest_frame_size.width-2*delta.x, dest_frame_size.height);
+                frame_being_moved_resized.MoveFrame(display_, e.x_root, original_y);
+            } else if(bottom && right) {
+                //if(width < 1) { width = 1; }
+                //if(height < CLIENT_OFFSET_Y+2*BUTTON_PADDING) { height = CLIENT_OFFSET_Y + 2*BUTTON_PADDING; }
+                frame_being_moved_resized.ResizeFrame(display_, dest_frame_size.width, dest_frame_size.height);
+            } else if(top) {
+                frame_being_moved_resized.ResizeFrame(display_, original_width, dest_frame_size.height-2*delta.y);
+                frame_being_moved_resized.MoveFrame(display_, original_x, e.y_root);//TODO: Dont just warp to mouse
+
+            } else if(bottom) {
+                //if(height < CLIENT_OFFSET_Y+2*BUTTON_PADDING) { height = CLIENT_OFFSET_Y + 2*BUTTON_PADDING; }
+                frame_being_moved_resized.ResizeFrame(display_, original_width, dest_frame_size.height);
+            } else if(left) {
+                frame_being_moved_resized.ResizeFrame(display_, dest_frame_size.width-2*delta.x, original_height);
+                frame_being_moved_resized.MoveFrame(display_, e.x_root, original_y);
+            } else if(right) {
+                frame_being_moved_resized.ResizeFrame(display_, dest_frame_size.width, original_height);
+            } else {
+                return;
+            }
+            
         } else {
-            frame_being_moved.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
+            frame_being_moved_resized.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
         }
     }
 }
@@ -427,7 +462,7 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
         drag_start_frame_size = Size<int>(width_frame, height_frame);
 
         // Set the frame to the frame that is being moved or resized
-        frame_being_moved = frame;
+        frame_being_moved_resized = frame;
     }
 }
 
@@ -468,7 +503,7 @@ bool WindowManager::SendMessage(Window win, Atom protocol){
 
 void WindowManager::OnButtonRelease(const XButtonEvent& e){
     button_pressed = false;
-    frame_being_moved = {}; 
+    frame_being_moved_resized = {}; 
 
     // Close the frame_being_closed if the pointer is still in the close button on release
     if(InsideWindow(frame_being_closed.close_win)){
