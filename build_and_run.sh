@@ -24,6 +24,9 @@ set -e
 # 1. Build binary.
 make build
 
+# NEED TO RUN THIS BECAUSE XEPHYR IS BROKEN
+unset XDG_SEAT
+
 # 2. Run.
 #
 # We need to specify the full path to Xephyr, as otherwise xinit will not
