@@ -19,7 +19,7 @@ extern "C" {
 #define XC_right_side 96
 #define XC_left_ptr 68
 
-#define EDGE_GRAB_DISTANCE FRAME_BORDER_WIDTH+8
+#define EDGE_GRAB_DISTANCE FRAME_BORDER_WIDTH+2
 
 class WindowManager {
     public:

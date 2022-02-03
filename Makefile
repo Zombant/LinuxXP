@@ -1,5 +1,5 @@
 build:
-	g++ -o window_manager.o window_manager.cpp frame.cpp main.cpp -lX11
+	g++ -o window_manager.o window_manager.cpp frame.cpp main.cpp -lX11 -lImlib2
 
 run:
 	make build

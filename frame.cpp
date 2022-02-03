@@ -1,5 +1,6 @@
 #include "frame.hpp"
 #include <X11/X.h>
+#include <Imlib2.h>
 extern "C" {
 #include <X11/Xlib.h>
 }
@@ -29,6 +30,7 @@ void Frame::Create(Display *display, Window root, Window win_to_frame, XWindowAt
     frame_attr.event_mask = ExposureMask | SubstructureNotifyMask | ButtonPressMask;
     frame_win = XCreateWindow(display, root, attrs.x, attrs.y, attrs.width + CLIENT_OFFSET_X, attrs.height + CLIENT_OFFSET_Y+BUTTON_PADDING*2, FRAME_BORDER_WIDTH,
             DefaultDepth(display, screen_num), InputOutput, DefaultVisual(display, screen_num), valuemask, &frame_attr);
+    printf("%d, %d\n", attrs.width, attrs.height);
 
     XSelectInput(display, frame_win, ExposureMask | SubstructureNotifyMask);
 
@@ -43,10 +45,22 @@ void Frame::Create(Display *display, Window root, Window win_to_frame, XWindowAt
     XAddToSaveSet(display, win_to_frame);
 
     // Reparent client window- triggers ReparentNotify which will be ignored
-    XReparentWindow(display, win_to_frame, frame_win, CLIENT_OFFSET_X, CLIENT_OFFSET_Y+BUTTON_PADDING*2);
+    XReparentWindow(display, win_to_frame, frame_win, CLIENT_OFFSET_X + CLIENT_PADDING_LEFT, CLIENT_OFFSET_Y+BUTTON_PADDING*2 + CLIENT_PADDING_TOP);
+
+    //Pixmap window_pix = LoadImage("window.bmp", display, root);
+    //XSetWindowBackgroundPixmap(display, frame_win, window_pix);
 
     // Map frame- generates MapNotify which will be ignored
     XMapWindow(display, frame_win);
+
+    Pixmap close_pix = LoadImage("close.bmp", display, root);
+    XSetWindowBackgroundPixmap(display, close_win, close_pix);
+
+    Pixmap max_pix = LoadImage("maximize.bmp", display, root);
+    XSetWindowBackgroundPixmap(display, max_win, max_pix);
+
+    Pixmap min_pix = LoadImage("minimize.bmp", display, root);
+    XSetWindowBackgroundPixmap(display, min_win, min_pix);
 
     // Map buttons
     XMapWindow(display, close_win);
@@ -80,4 +94,32 @@ void Frame::MoveFrame(Display *display, int x, int y) {
     XMoveWindow(display, frame_win, x, y);
     UpdateButtonLocations(display);
     UpdateClientLocation(display);
+}
+
+Pixmap Frame::LoadImage(const char *file, Display *display, Window root) {
+    Imlib_Image img = imlib_load_image(file);
+    if (!img) {
+        fprintf(stderr, "Cannot load image: %s", file);
+        exit(1);
+    }
+
+    imlib_context_set_image(img);
+
+    int width = imlib_image_get_width();
+    int height = imlib_image_get_height();
+
+    Screen *scn;
+    scn = DefaultScreenOfDisplay(display);
+
+    Pixmap pix = XCreatePixmap(display, root, width, height, XDefaultDepthOfScreen(scn));
+
+    imlib_context_set_display(display);
+    imlib_context_set_visual(DefaultVisualOfScreen(scn));
+    imlib_context_set_colormap(XDefaultColormapOfScreen(scn));
+    imlib_context_set_drawable(pix);
+
+    imlib_render_image_on_drawable(0, 0);
+
+    return pix;
+
 }
