@@ -98,6 +98,9 @@ void WindowManager::Setup() {
     default_cursor = XCreateFontCursor(display_, XC_left_ptr);
     XDefineCursor(display_, root_, default_cursor);
 
+    // Set up the bar
+    bar.Create(display_, root_);
+
     // Ungrab X server
     XUngrabServer(display_);
 }

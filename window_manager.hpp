@@ -8,6 +8,7 @@ extern "C" {
 #include <unordered_map>
 #include "util.hpp"
 #include "frame.hpp"
+#include "bar.hpp"
 
 #define XC_top_left_corner 134
 #define XC_top_right_corner 136
@@ -31,6 +32,8 @@ class WindowManager {
 
         // Start WM
         void Start();
+
+        Bar bar;
 
     private:
 
