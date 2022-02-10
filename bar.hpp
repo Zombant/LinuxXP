@@ -8,10 +8,10 @@ extern "C" {
 #include <unordered_map>
 #include "util.hpp"
 
-#define BAR_HEIGHT 30
+#define BAR_HEIGHT 31
 #define BAR_COLOR 0x0000ff
 #define BAR_BORDER_COLOR 0x0000ee
-#define BAR_BORDER_WIDTH 2
+#define BAR_BORDER_WIDTH 0
 
 class Bar {
     public:
@@ -21,6 +21,8 @@ class Bar {
         Window bar_win;
 
         Window start_button;
+
+        Pixmap start_pix, start_pix_press, start_pix_hover;
 
     private:
 

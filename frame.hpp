@@ -57,11 +57,6 @@ class Frame {
         void UpdateButtonLocations(Display *display);
         void UpdateClientLocation(Display *display);
 
-        Pixmap LoadImage(const char *file, Display *display, Window root);
-
-
-
-
 };
 
 #endif

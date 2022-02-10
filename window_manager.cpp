@@ -100,6 +100,7 @@ void WindowManager::Setup() {
 
     // Set up the bar
     bar.Create(display_, root_);
+    printf("%s", "TESTING\n");
 
     // Ungrab X server
     XUngrabServer(display_);
@@ -280,7 +281,7 @@ void WindowManager::UnFrame(Window w) {
     // If there are no clients left, set the input focus to the root window
     if(clients_.empty())
         XSetInputFocus(display_, root_, RevertToNone, CurrentTime);
-    
+
 }
 
 void WindowManager::OnMotionNotify(const XMotionEvent& e) {
@@ -301,7 +302,7 @@ void WindowManager::OnMotionNotify(const XMotionEvent& e) {
             Window returned_root;
             int original_x, original_y;
             unsigned original_width, original_height, border_width, depth;
-            XGetGeometry(display_, frame_being_moved_resized.frame_win, &returned_root, &original_x, &original_y, 
+            XGetGeometry(display_, frame_being_moved_resized.frame_win, &returned_root, &original_x, &original_y,
                     &original_width, &original_height, &border_width, &depth);
 
             if(top && left) {
@@ -332,7 +333,7 @@ void WindowManager::OnMotionNotify(const XMotionEvent& e) {
             } else {
                 return;
             }
-            
+
         } else {
             frame_being_moved_resized.MoveFrame(display_, dest_frame_pos.x, dest_frame_pos.y);
         }
@@ -344,7 +345,7 @@ void WindowManager::UpdateCursor(const XEvent& ev){
     const XMotionEvent e = ev.xmotion;
 
     Frame frame = frames_[e.subwindow];
-    
+
     Window returned_root_frame;
     int x_frame, y_frame;
     unsigned width_frame, height_frame, border_width_frame, depth_frame;
@@ -354,13 +355,13 @@ void WindowManager::UpdateCursor(const XEvent& ev){
         left = right = top = bottom = false;
         if(e.x < x_frame+EDGE_GRAB_DISTANCE)
             left = true;
-        
+
         if(e.x > x_frame+width_frame-EDGE_GRAB_DISTANCE)
             right = true;
-        
+
         if(e.y < y_frame+EDGE_GRAB_DISTANCE)
             top = true;
-        
+
         if(e.y > y_frame+height_frame-EDGE_GRAB_DISTANCE)
             bottom = true;
 
@@ -431,7 +432,7 @@ void WindowManager::OnButtonPress(const XButtonEvent& e){
     if(InsideWindow(frame.client_win)){
         printf("Client clicked\n");
         return;
-    } 
+    }
 
     if(InsideWindow(frame.close_win)){
         printf("Close win\n");
@@ -506,7 +507,7 @@ bool WindowManager::SendMessage(Window win, Atom protocol){
 
 void WindowManager::OnButtonRelease(const XButtonEvent& e){
     button_pressed = false;
-    frame_being_moved_resized = {}; 
+    frame_being_moved_resized = {};
 
     // Close the frame_being_closed if the pointer is still in the close button on release
     if(InsideWindow(frame_being_closed.close_win)){
@@ -526,4 +527,3 @@ void WindowManager::OnMapNotify(const XMapEvent& e){}
 void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e){}
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent& e){}
-

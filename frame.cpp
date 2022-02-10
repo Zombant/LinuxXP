@@ -5,6 +5,7 @@ extern "C" {
 #include <X11/Xlib.h>
 }
 #include "util.hpp"
+#include "image.hpp"
 #include <cstdio>
 #include <iostream>
 
@@ -38,7 +39,7 @@ void Frame::Create(Display *display, Window root, Window win_to_frame, XWindowAt
     close_win = XCreateSimpleWindow(display, frame_win, attrs.x+attrs.width-BUTTON_SIZE-2*BUTTON_BORDER_WIDTH-BUTTON_PADDING, attrs.y+BUTTON_PADDING, BUTTON_SIZE, BUTTON_SIZE, BUTTON_BORDER_WIDTH, BUTTON_BORDER_COLOR, BUTTON_BG_COLOR_R);
 
     max_win = XCreateSimpleWindow(display, frame_win, attrs.x+attrs.width-2*BUTTON_SIZE-4*BUTTON_BORDER_WIDTH-DISTANCE_BETWEEN_BUTTONS-BUTTON_PADDING, attrs.y+BUTTON_PADDING, BUTTON_SIZE, BUTTON_SIZE, BUTTON_BORDER_WIDTH, BUTTON_BORDER_COLOR, BUTTON_BG_COLOR_B);
-    
+
     min_win = XCreateSimpleWindow(display, frame_win, attrs.x+attrs.width-3*BUTTON_SIZE-6*BUTTON_BORDER_WIDTH-2*DISTANCE_BETWEEN_BUTTONS-BUTTON_PADDING, attrs.y+BUTTON_PADDING, BUTTON_SIZE, BUTTON_SIZE, BUTTON_BORDER_WIDTH, BUTTON_BORDER_COLOR, BUTTON_BG_COLOR_B);
 
     // Add client to save set so it will be kept alive if WM crashes
@@ -94,32 +95,4 @@ void Frame::MoveFrame(Display *display, int x, int y) {
     XMoveWindow(display, frame_win, x, y);
     UpdateButtonLocations(display);
     UpdateClientLocation(display);
-}
-
-Pixmap Frame::LoadImage(const char *file, Display *display, Window root) {
-    Imlib_Image img = imlib_load_image(file);
-    if (!img) {
-        fprintf(stderr, "Cannot load image: %s", file);
-        exit(1);
-    }
-
-    imlib_context_set_image(img);
-
-    int width = imlib_image_get_width();
-    int height = imlib_image_get_height();
-
-    Screen *scn;
-    scn = DefaultScreenOfDisplay(display);
-
-    Pixmap pix = XCreatePixmap(display, root, width, height, XDefaultDepthOfScreen(scn));
-
-    imlib_context_set_display(display);
-    imlib_context_set_visual(DefaultVisualOfScreen(scn));
-    imlib_context_set_colormap(XDefaultColormapOfScreen(scn));
-    imlib_context_set_drawable(pix);
-
-    imlib_render_image_on_drawable(0, 0);
-
-    return pix;
-
 }
